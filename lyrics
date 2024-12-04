@@ -9,18 +9,18 @@ def get_song_id_progress():
     try:
         req = requests.get(url = url, timeout = 3)
         res = json.loads(req.text)
-        return int(res["currentTrack"]["id"]), float(res["progress"])
+        return True, int(res["currentTrack"]["id"]), float(res["progress"])
     except:
-        return 0, 0.0
+        return False, 0, 0.0
 
 def get_song_lyrics(id: int) -> str:
     url = f"http://127.0.0.1:10754/lyric?id={id}"
     try:
-        req = requests.get(url = url, timeout = 3)
-        res =json.loads(req.text)
-        return res["lrc"]["lyric"]
+        res = requests.get(url = url, timeout = 3)
+        js =json.loads(res.text)
+        return True, js["lrc"]["lyric"]
     except:
-        return ""
+        return False, ""
 
 def parse_songs_lyrics(lrc: str) -> dict:
     lrc_dict = {}
@@ -51,8 +51,12 @@ def get_lyric(lyrics_dict: dict, progress: float) -> str:
     return lyrics_dict[key]
 
 if __name__ == "__main__":
-    id, progress = get_song_id_progress()
-    lyrics = get_song_lyrics(id)
+    res, id, progress = get_song_id_progress()
+    if res == False:
+        exit(0)
+    res, lyrics = get_song_lyrics(id)
+    if res == False:
+        exit(0)
     lyrics_dict = parse_songs_lyrics(lyrics)
     text = get_lyric(lyrics_dict, progress)
     if len(text) >= 20:

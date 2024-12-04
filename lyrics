@@ -1,0 +1,60 @@
+#!/usr/bin/python
+
+import requests
+import json
+import re
+
+def get_song_id_progress():
+    url = "http://127.0.0.1:27232/player"
+    try:
+        req = requests.get(url = url, timeout = 3)
+        res = json.loads(req.text)
+        return int(res["currentTrack"]["id"]), float(res["progress"])
+    except:
+        return 0, 0.0
+
+def get_song_lyrics(id: int) -> str:
+    url = f"http://127.0.0.1:10754/lyric?id={id}"
+    try:
+        req = requests.get(url = url, timeout = 3)
+        res =json.loads(req.text)
+        return res["lrc"]["lyric"]
+    except:
+        return ""
+
+def parse_songs_lyrics(lrc: str) -> dict:
+    lrc_dict = {}
+    def remove(x): return x.strip('[|]')
+    for line in lrc.split('\n'):
+        time_stamps = re.findall(r'\[[^\]]+\]', line)
+        if time_stamps:
+            lyric = line
+            for tplus in time_stamps:
+                lyric = lyric.replace(tplus, '')
+            for tplus in time_stamps:
+                t = remove(tplus)
+                tag_flag = t.split(':')[0]
+                if not tag_flag.isdigit():
+                    continue
+                time_lrc = int(tag_flag) * 60
+                time_lrc += int(t.split(':')[1].split('.')[0])
+                lrc_dict[time_lrc] = lyric
+    return lrc_dict
+
+def get_lyric(lyrics_dict: dict, progress: float) -> str:
+    key :int = 0
+    for item in lyrics_dict.items():
+        if item[0] <= progress:
+            key = item[0]
+        else:
+            break
+    return lyrics_dict[key]
+
+if __name__ == "__main__":
+    id, progress = get_song_id_progress()
+    lyrics = get_song_lyrics(id)
+    lyrics_dict = parse_songs_lyrics(lyrics)
+    text = get_lyric(lyrics_dict, progress)
+    if len(text) >= 20:
+        text = f"{text[0:19]}..."
+    print(text)
